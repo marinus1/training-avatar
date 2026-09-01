@@ -1,12 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Training Assistant - Planning Basics</title>
+    <title>Interactive Training Assistant - Planning Basics & Management</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .container { width: 800px; max-width: 100%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .container { width: 800px; max-width: 95%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         video { width: 100%; border-radius: 4px; }
         .controls { margin-top: 15px; display: flex; gap: 10px; }
         button { background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
@@ -20,9 +21,7 @@
 
 <div class="container">
     <h2>Management & Planning Basics Training</h2>
-    <!-- Note: Because browsers block local video paths for security, upload this file to GitHub Pages later to stream it live -->
-    <video id="trainingVideo" controls>
-        <source src="class-training.mp4" type="video/mp4">
+    <video id="trainingVideo" controls src="class-training.mp4">
         Your browser does not support the video tag.
     </video>
     
@@ -31,8 +30,8 @@
     </div>
 
     <div class="qa-box" id="qaBox">
-        <label for="userQuestion">Ask the facilitator a question about planning basics or management:</label>
-        <textarea id="userQuestion" placeholder="Type your question here (e.g., What happens when teams are idle?)..."></textarea>
+        <label for="userQuestion">Ask a question about planning basics, management, or team scheduling:</label>
+        <textarea id="userQuestion" placeholder="Type your question here..."></textarea>
         <button onclick="submitQuestion()">Submit Question</button>
     </div>
 
@@ -59,6 +58,10 @@
             document.getElementById('pauseAskBtn').innerText = "Pause & Ask Facilitator";
             qaBox.style.display = "none";
             responseBox.style.display = "none";
+            if(!video.src.includes("class-training.mp4")) {
+                video.src = "class-training.mp4";
+                video.load();
+            }
         }
     }
 
@@ -67,16 +70,29 @@
         if (!question) return;
 
         responseBox.style.display = "block";
+        let targetVideo = "class-training.mp4";
 
-        // Dynamic intelligence tailored to Planning Basics & Management
-        if (question.includes("idle") || question.includes("money") || question.includes("cost")) {
-            answerText.innerHTML = "As noted on the whiteboard, idle teams equal lost money. In planning basics, failing to allocate resources properly leads directly to operational downtime and wasted budget. Good management eliminates that waste.";
-        } else if (question.includes("management") || question.includes("leadership")) {
-            answerText.innerHTML = "Management deals with structure, execution, and maintaining steady operations, whereas leadership sets the new direction and mobilizes social influence. Both are vital for effective planning.";
+        if (question.includes("idle") || question.includes("cost") || question.includes("money") || question.includes("wasted")) {
+            targetVideo = "idle-response.mp4";
+            answerText.innerHTML = "As emphasized in our planning module, idle teams equal lost revenue. Effective operational planning eliminates downtime so crews stay productive.";
+        } else if (question.includes("schedule") || question.includes("timeline") || question.includes("delay")) {
+            targetVideo = "schedule-response.mp4";
+            answerText.innerHTML = "When schedules stall or last-minute changes happen, your entire timeline is impacted. Maintaining real-time visibility prevents these bottlenecks.";
+        } else if (question.includes("radar") || question.includes("dispatch") || question.includes("map")) {
+            targetVideo = "radar-response.mp4";
+            answerText.innerHTML = "The live dispatch radar matches available trade teams by suburb, rating, and immediate availability, cutting down hours of phone calls.";
         } else {
-            answerText.innerHTML = "That's a great question regarding '" + userQuestion.value + "'. From a planning and management perspective, clear targets and structured execution are what bridge the gap between our strategy and daily team performance.";
+            targetVideo = "class-training.mp4";
+            answerText.innerHTML = "That's a vital question regarding '" + userQuestion.value + "'. In planning basics and management, structured execution and clear resource allocation are the keys to keeping projects on target.";
         }
         
+        // Directly update video source attribute
+        video.src = targetVideo;
+        video.load();
+        video.play().catch(error => {
+            console.log("Playback error: ", error);
+        });
+
         userQuestion.value = "";
     }
 </script>
