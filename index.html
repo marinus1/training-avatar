@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Training Assistant - Planning Basics</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { width: 800px; max-width: 100%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        video { width: 100%; border-radius: 4px; }
+        .controls { margin-top: 15px; display: flex; gap: 10px; }
+        button { background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #005999; }
+        .qa-box { margin-top: 15px; display: none; flex-direction: column; gap: 10px; }
+        textarea { width: 100%; height: 80px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 4px; resize: none; }
+        .response-box { background: #2d2d2d; padding: 15px; border-radius: 4px; margin-top: 10px; border-left: 4px solid #007acc; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Management & Planning Basics Training</h2>
+    <!-- Note: Because browsers block local video paths for security, upload this file to GitHub Pages later to stream it live -->
+    <video id="trainingVideo" controls>
+        <source src="class-training.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <div class="controls">
+        <button id="pauseAskBtn" onclick="togglePauseAndAsk()">Pause & Ask Facilitator</button>
+    </div>
+
+    <div class="qa-box" id="qaBox">
+        <label for="userQuestion">Ask the facilitator a question about planning basics or management:</label>
+        <textarea id="userQuestion" placeholder="Type your question here (e.g., What happens when teams are idle?)..."></textarea>
+        <button onclick="submitQuestion()">Submit Question</button>
+    </div>
+
+    <div class="response-box" id="responseBox">
+        <strong>Facilitator's Response:</strong>
+        <p id="answerText"></p>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('trainingVideo');
+    const qaBox = document.getElementById('qaBox');
+    const responseBox = document.getElementById('responseBox');
+    const answerText = document.getElementById('answerText');
+    const userQuestion = document.getElementById('userQuestion');
+
+    function togglePauseAndAsk() {
+        if (!video.paused) {
+            video.pause();
+            document.getElementById('pauseAskBtn').innerText = "Resume Training";
+            qaBox.style.display = "flex";
+        } else {
+            video.play();
+            document.getElementById('pauseAskBtn').innerText = "Pause & Ask Facilitator";
+            qaBox.style.display = "none";
+            responseBox.style.display = "none";
+        }
+    }
+
+    function submitQuestion() {
+        const question = userQuestion.value.trim().toLowerCase();
+        if (!question) return;
+
+        responseBox.style.display = "block";
+
+        // Dynamic intelligence tailored to Planning Basics & Management
+        if (question.includes("idle") || question.includes("money") || question.includes("cost")) {
+            answerText.innerHTML = "As noted on the whiteboard, idle teams equal lost money. In planning basics, failing to allocate resources properly leads directly to operational downtime and wasted budget. Good management eliminates that waste.";
+        } else if (question.includes("management") || question.includes("leadership")) {
+            answerText.innerHTML = "Management deals with structure, execution, and maintaining steady operations, whereas leadership sets the new direction and mobilizes social influence. Both are vital for effective planning.";
+        } else {
+            answerText.innerHTML = "That's a great question regarding '" + userQuestion.value + "'. From a planning and management perspective, clear targets and structured execution are what bridge the gap between our strategy and daily team performance.";
+        }
+        
+        userQuestion.value = "";
+    }
+</script>
+
+</body>
+</html>
