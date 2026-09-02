@@ -8,6 +8,11 @@
         body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .container { width: 800px; max-width: 95%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
         video { width: 100%; border-radius: 4px; }
+        .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
+        button { background: #007acc; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background: #005999; }
+        #handBtn { background: #ffc107; color: #000; }
+        #handBtn:hover { background: #e0a800; }
         .status-box { margin-top: 15px; padding: 12px; background: #2d2d2d; border-radius: 4px; border-left: 4px solid #007acc; font-size: 15px; }
     </style>
 </head>
@@ -18,45 +23,47 @@
     <video id="trainingVideo" controls src="class-training.mp4">
         Your browser does not support the video tag.
     </video>
+    
+    <div class="controls">
+        <button id="handBtn" onclick="raiseHand()">✋ Raise Hand</button>
+    </div>
 
     <div class="status-box" id="statusBox">
-        Press <b>Play</b> on the video to begin. Say <strong>"Question"</strong> at any time to interrupt.
+        Press <b>Play</b> on the video. Click <strong>Raise Hand</strong> whenever you want to ask a question.
     </div>
 </div>
 
 <script>
     const video = document.getElementById('trainingVideo');
     const statusBox = document.getElementById('statusBox');
+    const handBtn = document.getElementById('handBtn');
 
     let recognition;
     let isListening = false;
-    let state = "PLAYING"; 
+    let state = "PLAYING"; // PLAYING, WAITING_FOR_THANKS, ANSWERING
     let accumulatedQuestion = "";
-    let globalUtterance = null; // Prevents browser garbage collection bug
 
     function speakText(text, callback) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
-            
-            globalUtterance = new SpeechSynthesisUtterance(text);
-            globalUtterance.rate = 1.0;
-            globalUtterance.pitch = 1.0;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
 
-            globalUtterance.onend = function() {
+            utterance.onend = function() {
                 if (callback) callback();
             };
-            
-            globalUtterance.onerror = function(e) {
-                console.log("Speech synthesis error:", e);
+            utterance.onerror = function() {
                 if (callback) callback();
             };
 
-            window.speechSynthesis.speak(globalUtterance);
+            window.speechSynthesis.speak(utterance);
         } else {
             if (callback) callback();
         }
     }
 
+    // Start voice recognition in the background as soon as video plays
     video.onplay = function() {
         if (!isListening) {
             startVoiceAssistant();
@@ -77,36 +84,21 @@
 
         recognition.onstart = function() {
             isListening = true;
-            statusBox.innerHTML = "Voice assistant active. Say <b>'Question'</b> to interrupt.";
-            statusBox.style.borderLeftColor = "#28a745";
+            console.log("Voice listener active.");
         };
 
         recognition.onresult = function(event) {
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
             console.log("State:", state, "| Heard:", transcript);
 
-            if (state === "PLAYING" && (transcript.includes("question") || transcript.includes("questions") || transcript.includes("qiestion"))) {
-                if (!video.paused) {
-                    video.pause();
-                    state = "LISTENING_QUESTION";
-                    accumulatedQuestion = "";
-                    statusBox.innerHTML = "<b>Trainer is listening...</b> Speak your question.";
-                    
-                    speakText("Go ahead, I am listening.");
-                }
-            } 
-            else if (state === "LISTENING_QUESTION") {
-                accumulatedKeywordCheck(transcript);
-            }
-            else if (state === "WAITING_THANKYOU") {
+            // If hand is raised and waiting for the user to finish asking via "thank you"
+            if (state === "WAITING_FOR_THANKS") {
                 if (transcript.includes("thank you") || transcript.includes("thanks")) {
-                    state = "PLAYING";
-                    statusBox.innerHTML = "Resuming training. Say <b>'Question'</b> to interrupt again.";
-                    speakText("Okay, let's carry on with the lesson.", function() {
-                        video.src = "class-training.mp4";
-                        video.load();
-                        video.play();
-                    });
+                    state = "ANSWERING";
+                    processAndAnswerQuestion(accumulatedQuestion.trim());
+                } else {
+                    accumulatedQuestion += " " + transcript;
+                    statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i><br>Say <b>'Thank you'</b> when finished.";
                 }
             }
         };
@@ -128,17 +120,25 @@
         } catch(e) {}
     }
 
-    function accumulatedKeywordCheck(transcript) {
-        accumulatedQuestion += " " + transcript;
-        statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i>";
+    // User clicks the Raise Hand button
+    function raiseHand() {
+        if (state !== "PLAYING") return;
         
-        clearTimeout(window.questionTimer);
-        window.questionTimer = setTimeout(() => {
-            if (state === "LISTENING_QUESTION") {
-                state = "ANSWERING";
-                processAndAnswerQuestion(accumulatedQuestion.trim());
-            }
-        }, 1500);
+        video.pause();
+        state = "WAITING_FOR_THANKS";
+        accumulatedQuestion = "";
+
+        // Update hand button style to show it is raised
+        handBtn.innerText = "✋ Hand Raised (Listening...)";
+        handBtn.style.background = "#28a745";
+        handBtn.style.color = "#fff";
+
+        statusBox.innerHTML = "<b>Hand raised!</b> Trainer is responding...";
+
+        // Trainer speaks out loud instantly
+        speakText("I see someone wants to ask a question, go ahead.", function() {
+            statusBox.innerHTML = "<b>Listening to your question...</b> Speak now, then say <b>'Thank you'</b> when done.";
+        });
     }
 
     function processAndAnswerQuestion(questionText) {
@@ -164,9 +164,20 @@
         video.load();
         video.play();
 
+        // Speak the answer, then drop the hand automatically and resume
         speakText(answerSpoken, function() {
-            state = "WAITING_THANKYOU";
-            statusBox.innerHTML = "Answer complete. Say <b>'Thank you'</b> when you are ready to resume.";
+            // Automatically drop the hand back down
+            handBtn.innerText = "✋ Raise Hand";
+            handBtn.style.background = "#ffc107";
+            handBtn.style.color = "#000";
+
+            speakText("Okay, let's carry on with the lesson.", function() {
+                video.src = "class-training.mp4";
+                video.load();
+                video.play();
+                state = "PLAYING";
+                statusBox.innerHTML = "Training resumed. Click <b>Raise Hand</b> to ask another question.";
+            });
         });
     }
 </script>
