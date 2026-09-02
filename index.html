@@ -32,30 +32,26 @@
     let isListening = false;
     let state = "PLAYING"; 
     let accumulatedQuestion = "";
+    let globalUtterance = null; // Prevents browser garbage collection bug
 
     function speakText(text, callback) {
         if ('speechSynthesis' in window) {
-            // Fix for Chrome speech synthesis freeze bug
-            window.speechSynthesis.resume();
+            window.speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.95;
-            utterance.pitch = 0.95;
-            
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length > 0) {
-                let selectedVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('David') || v.name.includes('James')));
-                if (selectedVoice) utterance.voice = selectedVoice;
-            }
+            globalUtterance = new SpeechSynthesisUtterance(text);
+            globalUtterance.rate = 1.0;
+            globalUtterance.pitch = 1.0;
 
-            utterance.onend = function() {
+            globalUtterance.onend = function() {
                 if (callback) callback();
             };
-            utterance.onerror = function() {
+            
+            globalUtterance.onerror = function(e) {
+                console.log("Speech synthesis error:", e);
                 if (callback) callback();
             };
 
-            window.speechSynthesis.speak(utterance);
+            window.speechSynthesis.speak(globalUtterance);
         } else {
             if (callback) callback();
         }
@@ -96,21 +92,11 @@
                     accumulatedQuestion = "";
                     statusBox.innerHTML = "<b>Trainer is listening...</b> Speak your question.";
                     
-                    // Force the spoken response instantly
                     speakText("Go ahead, I am listening.");
                 }
             } 
             else if (state === "LISTENING_QUESTION") {
-                accumulatedQuestion += " " + transcript;
-                statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i>";
-                
-                clearTimeout(window.questionTimer);
-                window.questionTimer = setTimeout(() => {
-                    if (state === "LISTENING_QUESTION") {
-                        state = "ANSWERING";
-                        processAndAnswerQuestion(accumulatedQuestion.trim());
-                    }
-                }, 1500);
+                accumulatedKeywordCheck(transcript);
             }
             else if (state === "WAITING_THANKYOU") {
                 if (transcript.includes("thank you") || transcript.includes("thanks")) {
@@ -142,6 +128,19 @@
         } catch(e) {}
     }
 
+    function accumulatedKeywordCheck(transcript) {
+        accumulatedQuestion += " " + transcript;
+        statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i>";
+        
+        clearTimeout(window.questionTimer);
+        window.questionTimer = setTimeout(() => {
+            if (state === "LISTENING_QUESTION") {
+                state = "ANSWERING";
+                processAndAnswerQuestion(accumulatedQuestion.trim());
+            }
+        }, 1500);
+    }
+
     function processAndAnswerQuestion(questionText) {
         statusBox.innerHTML = "Answering question...";
         let targetVideo = "class-training.mp4";
@@ -169,10 +168,6 @@
             state = "WAITING_THANKYOU";
             statusBox.innerHTML = "Answer complete. Say <b>'Thank you'</b> when you are ready to resume.";
         });
-    }
-
-    if ('speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = function() {};
     }
 </script>
 
