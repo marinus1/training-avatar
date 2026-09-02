@@ -59,7 +59,6 @@
         }
     }
 
-    // Automatically start voice assistant when user clicks play on the video
     video.onplay = function() {
         if (!isListening) {
             startVoiceAssistant();
@@ -88,16 +87,12 @@
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
             console.log("State:", state, "| Heard:", transcript);
 
-            if (state === "PLAYING" && (transcript.includes("question") || transcript.includes("questions"))) {
+            if (state === "PLAYING" && (transcript.includes("question") || transcript.includes("questions") || transcript.includes("qiestion"))) {
                 if (!video.paused) {
                     video.pause();
                     state = "LISTENING_QUESTION";
                     accumulatedQuestion = "";
-                    statusBox.innerHTML = "Interruption detected! Trainer is listening...";
-                    
-                    speakText("I heard someone wants to ask a question. Go ahead, I am listening.", function() {
-                        statusBox.innerHTML = "<b>Listening to your question...</b> Speak now.";
-                    });
+                    statusBox.innerHTML = "<b>Listening to your question...</b> Speak now.";
                 }
             } 
             else if (state === "LISTENING_QUESTION") {
