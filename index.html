@@ -33,26 +33,28 @@
     let state = "PLAYING"; 
     let accumulatedQuestion = "";
 
-    function getBestVoice() {
-        if (!('speechSynthesis' in window)) return null;
-        const voices = window.speechSynthesis.getVoices();
-        let selectedVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('David') || v.name.includes('James')));
-        return selectedVoice || voices.find(v => v.lang.includes('en')) || voices[0];
-    }
-
     function speakText(text, callback) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
+            // Fix for Chrome speech synthesis freeze bug
+            window.speechSynthesis.resume();
+            
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 0.95;
             utterance.pitch = 0.95;
             
-            const voice = getBestVoice();
-            if (voice) utterance.voice = voice;
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length > 0) {
+                let selectedVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('David') || v.name.includes('James')));
+                if (selectedVoice) utterance.voice = selectedVoice;
+            }
 
             utterance.onend = function() {
                 if (callback) callback();
             };
+            utterance.onerror = function() {
+                if (callback) callback();
+            };
+
             window.speechSynthesis.speak(utterance);
         } else {
             if (callback) callback();
@@ -94,7 +96,7 @@
                     accumulatedQuestion = "";
                     statusBox.innerHTML = "<b>Trainer is listening...</b> Speak your question.";
                     
-                    // Trainer speaks back immediately with a short, responsive prompt
+                    // Force the spoken response instantly
                     speakText("Go ahead, I am listening.");
                 }
             } 
@@ -170,7 +172,7 @@
     }
 
     if ('speechSynthesis' in window) {
-        window.speechSynthesis.onvoiceschanged = getBestVoice;
+        window.speechSynthesis.onvoiceschanged = function() {};
     }
 </script>
 
