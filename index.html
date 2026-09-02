@@ -92,7 +92,10 @@
                     video.pause();
                     state = "LISTENING_QUESTION";
                     accumulatedQuestion = "";
-                    statusBox.innerHTML = "<b>Listening to your question...</b> Speak now.";
+                    statusBox.innerHTML = "<b>Trainer is listening...</b> Speak your question.";
+                    
+                    // Trainer speaks back immediately with a short, responsive prompt
+                    speakText("Go ahead, I am listening.");
                 }
             } 
             else if (state === "LISTENING_QUESTION") {
