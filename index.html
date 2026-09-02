@@ -27,7 +27,7 @@
     </div>
 
     <div class="status-box" id="statusBox">
-        Click 'Start Voice Assistant', then press play. Say <strong>"Question"</strong> at any time to interrupt.
+        Click 'Start Voice Assistant', then press play. Say <strong>"Question"</strong> to interrupt.
     </div>
 </div>
 
@@ -39,10 +39,11 @@
     let recognition;
     let isListening = false;
     let waitingForQuestion = false;
+    let accumulatedQuestion = "";
 
     function speakText(text, callback) {
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Stop any previous speech
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.0;
             utterance.pitch = 1.0;
@@ -78,22 +79,28 @@
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
             console.log("Heard:", transcript);
 
-            // Phase 1: Listening for the trigger word "question" while video is playing
+            // Phase 1: Listening for trigger word "question" while video plays
             if (!waitingForQuestion && (transcript.includes("question") || transcript.includes("questions"))) {
                 if (!video.paused) {
                     video.pause();
                     waitingForQuestion = true;
+                    accumulatedQuestion = "";
                     statusBox.innerHTML = "Interruption detected! Trainer is responding...";
                     
                     speakText("I heard someone wants to ask a question. Go ahead, I am listening.", function() {
-                        statusBox.innerHTML = "<b>Listening for your question...</b> (Speak clearly now)";
+                        statusBox.innerHTML = "<b>Listening to your question...</b> Say <b>'Thank you'</b> when you are finished.";
                     });
                 }
             } 
-            // Phase 2: Capturing the actual question after the prompt
+            // Phase 2: Actively gathering user question until they say "thank you"
             else if (waitingForQuestion) {
-                waitingForQuestion = false;
-                processQuestionAnswer(transcript);
+                if (transcript.includes("thank you") || transcript.includes("thanks")) {
+                    waitingForQuestion = false;
+                    processQuestionAnswer(accumulatedQuestion);
+                } else {
+                    accumulatedQuestion += " " + transcript;
+                    statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i><br>Say <b>'Thank you'</b> when done.";
+                }
             }
         };
 
@@ -102,7 +109,6 @@
         };
 
         recognition.onend = function() {
-            // Auto-restart recognition so it keeps listening continuously
             if (isListening) {
                 try {
                     recognition.start();
@@ -120,17 +126,17 @@
     }
 
     function processQuestionAnswer(questionText) {
-        statusBox.innerHTML = "You asked: <i>'" + questionText + "'</i>";
+        statusBox.innerHTML = "Processing question: <i>'" + questionText + "'</i>";
         let targetVideo = "class-training.mp4";
         let answerSpoken = "";
 
-        if (questionText.includes("idle") || question.includes("cost") || question.includes("money") || question.includes("wasted")) {
+        if (questionText.includes("idle") || questionText.includes("cost") || questionText.includes("money") || questionText.includes("wasted")) {
             targetVideo = "idle-response.mp4";
             answerSpoken = "As emphasized in our planning module, idle teams equal lost revenue. Effective operational planning eliminates downtime so crews stay productive.";
-        } else if (questionText.includes("schedule") || question.includes("timeline") || question.includes("delay")) {
+        } else if (questionText.includes("schedule") || questionText.includes("timeline") || questionText.includes("delay")) {
             targetVideo = "schedule-response.mp4";
             answerSpoken = "When schedules stall or last-minute changes happen, your entire timeline is impacted. Maintaining real-time visibility prevents these bottlenecks.";
-        } else if (question.includes("radar") || question.includes("dispatch") || question.includes("map")) {
+        } else if (questionText.includes("radar") || questionText.includes("dispatch") || questionText.includes("map")) {
             targetVideo = "radar-response.mp4";
             answerSpoken = "The live dispatch radar matches available trade teams by suburb, rating, and immediate availability, cutting down hours of phone calls.";
         } else {
@@ -138,12 +144,12 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
-        // Switch to response video and play out loud
+        // Switch video and play response
         video.src = targetVideo;
         video.load();
         video.play();
 
-        // Speak the answer, pause 2 seconds, then resume main lesson
+        // Speak answer, pause 2 seconds, say wrap-up phrase, resume main lesson
         speakText(answerSpoken, function() {
             setTimeout(function() {
                 speakText("Okay, let's carry on with the lesson.", function() {
@@ -152,7 +158,7 @@
                     video.play();
                     statusBox.innerHTML = "Resuming training. Say <b>'Question'</b> to interrupt again.";
                 });
-            }, 2000); // 2 second pause
+            }, 2000);
         });
     }
 </script>
