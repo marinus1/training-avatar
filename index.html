@@ -7,7 +7,7 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .container { width: 800px; max-width: 95%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
-        video { width: 100%; border-radius: 4px; }
+        video { width: 100%; border-radius: 4px; background: #000; }
         .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
         button { background: #007acc; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background 0.3s; }
         button:hover { background: #005999; }
@@ -135,6 +135,25 @@
         });
     }
 
+    function playVideoClip(filename, callback) {
+        video.muted = true;
+        video.src = filename;
+        video.load();
+        
+        video.onloadeddata = function() {
+            video.play().catch(e => console.log("Play error:", e));
+        };
+        
+        video.onerror = function() {
+            console.log("Error loading video file: " + filename + ". Falling back to main video.");
+            video.src = "class-training.mp4";
+            video.load();
+            video.play();
+        };
+
+        if (callback) callback();
+    }
+
     function processAndAnswerQuestion(questionText) {
         statusBox.innerHTML = "Answering question...";
         let targetVideo = "class-training.mp4";
@@ -154,26 +173,19 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
-        // Mute the video audio so it doesn't overlap with speech synthesis
-        video.muted = true;
-        video.src = targetVideo;
-        video.load();
-        video.play();
+        playVideoClip(targetVideo, function() {
+            speakText(answerSpoken, function() {
+                handBtn.innerText = "✋ Raise Hand";
+                handBtn.style.background = "#ffc107";
+                handBtn.style.color = "#000";
 
-        speakText(answerSpoken, function() {
-            // Drop hand automatically
-            handBtn.innerText = "✋ Raise Hand";
-            handBtn.style.background = "#ffc107";
-            handBtn.style.color = "#000";
-
-            speakText("Okay, let's carry on with the lesson.", function() {
-                // Switch back to main video and unmute its audio
-                video.muted = false;
-                video.src = "class-training.mp4";
-                video.load();
-                video.play();
-                state = "PLAYING";
-                statusBox.innerHTML = "Training resumed. Click <b>Raise Hand</b> to ask another question.";
+                speakText("Okay, let's carry on with the lesson.", function() {
+                    video.muted = false;
+                    playVideoClip("class-training.mp4", function() {
+                        state = "PLAYING";
+                        statusBox.innerHTML = "Training resumed. Click <b>Raise Hand</b> to ask another question.";
+                    });
+                });
             });
         });
     }
