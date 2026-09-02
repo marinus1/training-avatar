@@ -8,9 +8,6 @@
         body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .container { width: 800px; max-width: 95%; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
         video { width: 100%; border-radius: 4px; }
-        .controls { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
-        button { background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #005999; }
         .status-box { margin-top: 15px; padding: 12px; background: #2d2d2d; border-radius: 4px; border-left: 4px solid #007acc; font-size: 15px; }
     </style>
 </head>
@@ -21,32 +18,38 @@
     <video id="trainingVideo" controls src="class-training.mp4">
         Your browser does not support the video tag.
     </video>
-    
-    <div class="controls">
-        <button id="startVoiceBtn" onclick="startVoiceAssistant()">Start Voice Assistant</button>
-    </div>
 
     <div class="status-box" id="statusBox">
-        Click 'Start Voice Assistant', then press play. Say <strong>"Question"</strong> to interrupt.
+        Press <b>Play</b> on the video to begin. Say <strong>"Question"</strong> at any time to interrupt.
     </div>
 </div>
 
 <script>
     const video = document.getElementById('trainingVideo');
     const statusBox = document.getElementById('statusBox');
-    const startVoiceBtn = document.getElementById('startVoiceBtn');
 
     let recognition;
     let isListening = false;
-    let waitingForQuestion = false;
+    let state = "PLAYING"; // States: PLAYING, LISTENING_QUESTION, ANSWERING, WAITING_THANKYOU
     let accumulatedQuestion = "";
+
+    function getBestVoice() {
+        if (!('speechSynthesis' in window)) return null;
+        const voices = window.speechSynthesis.getVoices();
+        let selectedVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('David') || v.name.includes('James')));
+        return selectedVoice || voices.find(v => v.lang.includes('en')) || voices[0];
+    }
 
     function speakText(text, callback) {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
+            utterance.rate = 0.95;
+            utterance.pitch = 0.95;
+            
+            const voice = getBestVoice();
+            if (voice) utterance.voice = voice;
+
             utterance.onend = function() {
                 if (callback) callback();
             };
@@ -55,6 +58,13 @@
             if (callback) callback();
         }
     }
+
+    // Automatically start voice assistant when user clicks play on the video
+    video.onplay = function() {
+        if (!isListening) {
+            startVoiceAssistant();
+        }
+    };
 
     function startVoiceAssistant() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -70,36 +80,47 @@
 
         recognition.onstart = function() {
             isListening = true;
-            startVoiceBtn.innerText = "Voice Assistant Active (Listening...)";
-            startVoiceBtn.style.background = "#28a745";
-            statusBox.innerHTML = "Microphone is active. Play the video and say <b>'Question'</b> to interrupt.";
+            statusBox.innerHTML = "Voice assistant active. Say <b>'Question'</b> to interrupt.";
+            statusBox.style.borderLeftColor = "#28a745";
         };
 
         recognition.onresult = function(event) {
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-            console.log("Heard:", transcript);
+            console.log("State:", state, "| Heard:", transcript);
 
-            // Phase 1: Listening for trigger word "question" while video plays
-            if (!waitingForQuestion && (transcript.includes("question") || transcript.includes("questions"))) {
+            if (state === "PLAYING" && (transcript.includes("question") || transcript.includes("questions"))) {
                 if (!video.paused) {
                     video.pause();
-                    waitingForQuestion = true;
+                    state = "LISTENING_QUESTION";
                     accumulatedQuestion = "";
-                    statusBox.innerHTML = "Interruption detected! Trainer is responding...";
+                    statusBox.innerHTML = "Interruption detected! Trainer is listening...";
                     
                     speakText("I heard someone wants to ask a question. Go ahead, I am listening.", function() {
-                        statusBox.innerHTML = "<b>Listening to your question...</b> Say <b>'Thank you'</b> when you are finished.";
+                        statusBox.innerHTML = "<b>Listening to your question...</b> Speak now.";
                     });
                 }
             } 
-            // Phase 2: Actively gathering user question until they say "thank you"
-            else if (waitingForQuestion) {
+            else if (state === "LISTENING_QUESTION") {
+                accumulatedQuestion += " " + transcript;
+                statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i>";
+                
+                clearTimeout(window.questionTimer);
+                window.questionTimer = setTimeout(() => {
+                    if (state === "LISTENING_QUESTION") {
+                        state = "ANSWERING";
+                        processAndAnswerQuestion(accumulatedQuestion.trim());
+                    }
+                }, 1500);
+            }
+            else if (state === "WAITING_THANKYOU") {
                 if (transcript.includes("thank you") || transcript.includes("thanks")) {
-                    waitingForQuestion = false;
-                    processQuestionAnswer(accumulatedQuestion);
-                } else {
-                    accumulatedQuestion += " " + transcript;
-                    statusBox.innerHTML = "Hearing question: <i>'" + accumulatedQuestion.trim() + "'</i><br>Say <b>'Thank you'</b> when done.";
+                    state = "PLAYING";
+                    statusBox.innerHTML = "Resuming training. Say <b>'Question'</b> to interrupt again.";
+                    speakText("Okay, let's carry on with the lesson.", function() {
+                        video.src = "class-training.mp4";
+                        video.load();
+                        video.play();
+                    });
                 }
             }
         };
@@ -112,21 +133,17 @@
             if (isListening) {
                 try {
                     recognition.start();
-                } catch(e) {
-                    console.log("Recognition restart note: ", e);
-                }
+                } catch(e) {}
             }
         };
 
         try {
             recognition.start();
-        } catch(e) {
-            console.log("Already started");
-        }
+        } catch(e) {}
     }
 
-    function processQuestionAnswer(questionText) {
-        statusBox.innerHTML = "Processing question: <i>'" + questionText + "'</i>";
+    function processAndAnswerQuestion(questionText) {
+        statusBox.innerHTML = "Answering question...";
         let targetVideo = "class-training.mp4";
         let answerSpoken = "";
 
@@ -136,7 +153,7 @@
         } else if (questionText.includes("schedule") || questionText.includes("timeline") || questionText.includes("delay")) {
             targetVideo = "schedule-response.mp4";
             answerSpoken = "When schedules stall or last-minute changes happen, your entire timeline is impacted. Maintaining real-time visibility prevents these bottlenecks.";
-        } else if (questionText.includes("radar") || questionText.includes("dispatch") || questionText.includes("map")) {
+        } else if (questionText.includes("radar") || question.includes("dispatch") || question.includes("map")) {
             targetVideo = "radar-response.mp4";
             answerSpoken = "The live dispatch radar matches available trade teams by suburb, rating, and immediate availability, cutting down hours of phone calls.";
         } else {
@@ -144,22 +161,18 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
-        // Switch video and play response
         video.src = targetVideo;
         video.load();
         video.play();
 
-        // Speak answer, pause 2 seconds, say wrap-up phrase, resume main lesson
         speakText(answerSpoken, function() {
-            setTimeout(function() {
-                speakText("Okay, let's carry on with the lesson.", function() {
-                    video.src = "class-training.mp4";
-                    video.load();
-                    video.play();
-                    statusBox.innerHTML = "Resuming training. Say <b>'Question'</b> to interrupt again.";
-                });
-            }, 2000);
+            state = "WAITING_THANKYOU";
+            statusBox.innerHTML = "Answer complete. Say <b>'Thank you'</b> when you are ready to resume.";
         });
+    }
+
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = getBestVoice;
     }
 </script>
 
