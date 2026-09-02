@@ -30,7 +30,7 @@
 
     let recognition;
     let isListening = false;
-    let state = "PLAYING"; // States: PLAYING, LISTENING_QUESTION, ANSWERING, WAITING_THANKYOU
+    let state = "PLAYING"; 
     let accumulatedQuestion = "";
 
     function getBestVoice() {
@@ -148,7 +148,7 @@
         } else if (questionText.includes("schedule") || questionText.includes("timeline") || questionText.includes("delay")) {
             targetVideo = "schedule-response.mp4";
             answerSpoken = "When schedules stall or last-minute changes happen, your entire timeline is impacted. Maintaining real-time visibility prevents these bottlenecks.";
-        } else if (questionText.includes("radar") || question.includes("dispatch") || question.includes("map")) {
+        } else if (questionText.includes("radar") || questionText.includes("dispatch") || questionText.includes("map")) {
             targetVideo = "radar-response.mp4";
             answerSpoken = "The live dispatch radar matches available trade teams by suburb, rating, and immediate availability, cutting down hours of phone calls.";
         } else {
