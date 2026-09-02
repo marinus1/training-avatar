@@ -40,7 +40,7 @@
 
     let recognition;
     let isListening = false;
-    let state = "PLAYING"; // PLAYING, WAITING_FOR_THANKS, ANSWERING
+    let state = "PLAYING"; 
     let accumulatedQuestion = "";
 
     function speakText(text, callback) {
@@ -63,7 +63,6 @@
         }
     }
 
-    // Start voice recognition in the background as soon as video plays
     video.onplay = function() {
         if (!isListening) {
             startVoiceAssistant();
@@ -84,14 +83,12 @@
 
         recognition.onstart = function() {
             isListening = true;
-            console.log("Voice listener active.");
         };
 
         recognition.onresult = function(event) {
             const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
             console.log("State:", state, "| Heard:", transcript);
 
-            // If hand is raised and waiting for the user to finish asking via "thank you"
             if (state === "WAITING_FOR_THANKS") {
                 if (transcript.includes("thank you") || transcript.includes("thanks")) {
                     state = "ANSWERING";
@@ -120,7 +117,6 @@
         } catch(e) {}
     }
 
-    // User clicks the Raise Hand button
     function raiseHand() {
         if (state !== "PLAYING") return;
         
@@ -128,14 +124,12 @@
         state = "WAITING_FOR_THANKS";
         accumulatedQuestion = "";
 
-        // Update hand button style to show it is raised
         handBtn.innerText = "✋ Hand Raised (Listening...)";
         handBtn.style.background = "#28a745";
         handBtn.style.color = "#fff";
 
         statusBox.innerHTML = "<b>Hand raised!</b> Trainer is responding...";
 
-        // Trainer speaks out loud instantly
         speakText("I see someone wants to ask a question, go ahead.", function() {
             statusBox.innerHTML = "<b>Listening to your question...</b> Speak now, then say <b>'Thank you'</b> when done.";
         });
@@ -160,18 +154,21 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
+        // Mute the video audio so it doesn't overlap with speech synthesis
+        video.muted = true;
         video.src = targetVideo;
         video.load();
         video.play();
 
-        // Speak the answer, then drop the hand automatically and resume
         speakText(answerSpoken, function() {
-            // Automatically drop the hand back down
+            // Drop hand automatically
             handBtn.innerText = "✋ Raise Hand";
             handBtn.style.background = "#ffc107";
             handBtn.style.color = "#000";
 
             speakText("Okay, let's carry on with the lesson.", function() {
+                // Switch back to main video and unmute its audio
+                video.muted = false;
                 video.src = "class-training.mp4";
                 video.load();
                 video.play();
