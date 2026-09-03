@@ -136,25 +136,22 @@
     }
 
     function playVideoClip(filename, shouldMute, onReadyCallback) {
-        video.muted = shouldMute;
         video.src = filename;
+        video.muted = shouldMute;
         video.load();
         
-        video.onloadeddata = function() {
-            video.play().then(() => {
-                if (onReadyCallback) onReadyCallback();
-            }).catch(e => console.log("Play error:", e));
-        };
-        
-        video.onerror = function() {
-            statusBox.innerHTML = "<b>Notice:</b> File <code>" + filename + "</code> not found on GitHub. Playing main video.";
-            console.log("Missing video file: " + filename);
-            video.muted = false;
+        video.play().then(() => {
+            video.muted = shouldMute; // Enforce mute/unmute state post-play
+            if (onReadyCallback) onReadyCallback();
+        }).catch(e => {
+            console.log("Play error:", e);
+            // Fallback
             video.src = "class-training.mp4";
+            video.muted = false;
             video.load();
             video.play();
             if (onReadyCallback) onReadyCallback();
-        };
+        });
     }
 
     function processAndAnswerQuestion(questionText) {
@@ -176,7 +173,7 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
-        // Play the response video muted so browser speech synthesis is clear
+        // Play response video muted
         playVideoClip(targetVideo, true, function() {
             speakText(answerSpoken, function() {
                 handBtn.innerText = "✋ Raise Hand";
@@ -184,7 +181,7 @@
                 handBtn.style.color = "#000";
 
                 speakText("Okay, let's carry on with the lesson.", function() {
-                    // Explicitly unmute and switch back to the main presentation video
+                    // Explicitly switch back to main video unmuted (`false`)
                     playVideoClip("class-training.mp4", false, function() {
                         state = "PLAYING";
                         statusBox.innerHTML = "Training resumed. Click <b>Raise Hand</b> to ask another question.";
