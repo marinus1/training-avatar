@@ -135,23 +135,25 @@
         });
     }
 
-    function playVideoClip(filename, callback) {
+    function playVideoClip(filename, onReadyCallback) {
         video.muted = true;
         video.src = filename;
         video.load();
         
         video.onloadeddata = function() {
-            video.play().catch(e => console.log("Play error:", e));
+            video.play().then(() => {
+                if (onReadyCallback) onReadyCallback();
+            }).catch(e => console.log("Play error:", e));
         };
         
         video.onerror = function() {
-            console.log("Error loading video file: " + filename + ". Falling back to main video.");
+            statusBox.innerHTML = "<b>Notice:</b> File <code>" + filename + "</code> not found on GitHub. Playing main video.";
+            console.log("Missing video file: " + filename);
             video.src = "class-training.mp4";
             video.load();
             video.play();
+            if (onReadyCallback) onReadyCallback();
         };
-
-        if (callback) callback();
     }
 
     function processAndAnswerQuestion(questionText) {
