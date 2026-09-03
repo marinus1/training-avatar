@@ -135,8 +135,8 @@
         });
     }
 
-    function playVideoClip(filename, onReadyCallback) {
-        video.muted = true;
+    function playVideoClip(filename, shouldMute, onReadyCallback) {
+        video.muted = shouldMute;
         video.src = filename;
         video.load();
         
@@ -149,6 +149,7 @@
         video.onerror = function() {
             statusBox.innerHTML = "<b>Notice:</b> File <code>" + filename + "</code> not found on GitHub. Playing main video.";
             console.log("Missing video file: " + filename);
+            video.muted = false;
             video.src = "class-training.mp4";
             video.load();
             video.play();
@@ -175,15 +176,16 @@
             answerSpoken = "That is a vital question regarding your project execution. Structured planning and clear resource allocation are the absolute keys to keeping targets on track.";
         }
 
-        playVideoClip(targetVideo, function() {
+        // Play the response video muted so browser speech synthesis is clear
+        playVideoClip(targetVideo, true, function() {
             speakText(answerSpoken, function() {
                 handBtn.innerText = "✋ Raise Hand";
                 handBtn.style.background = "#ffc107";
                 handBtn.style.color = "#000";
 
                 speakText("Okay, let's carry on with the lesson.", function() {
-                    video.muted = false;
-                    playVideoClip("class-training.mp4", function() {
+                    // Explicitly unmute and switch back to the main presentation video
+                    playVideoClip("class-training.mp4", false, function() {
                         state = "PLAYING";
                         statusBox.innerHTML = "Training resumed. Click <b>Raise Hand</b> to ask another question.";
                     });
